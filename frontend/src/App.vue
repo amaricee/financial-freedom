@@ -1,11 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { RouterLink } from 'vue-router'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div class="min-h-screen bg-background">
+    <nav class="border-b px-6 py-3 flex gap-4">
+      <RouterLink to="/" class="font-medium hover:underline">Dashboard</RouterLink>
+      <RouterLink to="/accounts" class="font-medium hover:underline">Akun</RouterLink>
+      <RouterLink to="/transactions" class="font-medium hover:underline">Transaksi</RouterLink>
+    </nav>
+    <router-view />
+  </div>
 </template>
-
-<style scoped></style>
