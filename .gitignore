@@ -1,0 +1,27 @@
+# --- Python / Backend ---
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Environment variables (JANGAN commit credential)
+backend/.env
+*.env
+!*.env.example
+
+# Alembic
+# (versions/*.py TETAP di-commit, ini bukan di-ignore)
+
+# --- Node / Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
