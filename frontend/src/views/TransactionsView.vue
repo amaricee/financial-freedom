@@ -4,10 +4,14 @@ import { useTransactionsStore } from '@/stores/transactions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useCategoriesStore } from '@/stores/categories'
 import type { TransactionType } from '@/types'
+import { formatRupiah, formatTanggal } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { checkAndNotifySpending } from '@/lib/spending-alert'
 import {
   Dialog,
   DialogContent,
@@ -24,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Trash2 } from 'lucide-vue-next'
 
 const trxStore = useTransactionsStore()
 const accountsStore = useAccountsStore()
@@ -48,7 +53,12 @@ const tipeLabels: Record<TransactionType, string> = {
   transfer: 'Transfer',
 }
 
-// Kategori difilter sesuai tipe transaksi yang dipilih (income/expense)
+const tipeBadgeClass: Record<TransactionType, string> = {
+  income: 'bg-green-100 text-green-700 hover:bg-green-100',
+  expense: 'bg-red-100 text-red-700 hover:bg-red-100',
+  transfer: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
+}
+
 const filteredCategories = computed(() =>
   categoriesStore.categories.filter((c) => c.tipe === form.value.tipe),
 )
@@ -62,13 +72,17 @@ function categoryName(id: number | null) {
   return categoriesStore.categories.find((c) => c.id === id)?.nama ?? '-'
 }
 
-function formatRupiah(value: string) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(Number(value))
+function amountPrefix(tipe: TransactionType) {
+  if (tipe === 'income') return '+ '
+  if (tipe === 'expense') return '- '
+  return ''
 }
+
+const sortedTransactions = computed(() =>
+  [...trxStore.transactions].sort(
+    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime() || b.id - a.id,
+  ),
+)
 
 async function handleSubmit() {
   const payload = {
@@ -81,6 +95,16 @@ async function handleSubmit() {
     account_id_tujuan:
       form.value.tipe === 'transfer' ? Number(form.value.account_id_tujuan) : null,
   }
+
+  // Cek boros/hemat SEBELUM createTransaction, biar histori yang dibandingin
+  // gak ke-pengaruh sama transaksi yang baru aja mau ditambah
+  const catName = categoryName(payload.category_id)
+  checkAndNotifySpending({
+    newTransaction: payload,
+    categoryName: catName,
+    allTransactions: trxStore.transactions,
+  })
+
   await trxStore.createTransaction(payload)
   isDialogOpen.value = false
   form.value = { ...emptyForm }
@@ -102,7 +126,12 @@ onMounted(() => {
 <template>
   <div class="p-6 space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-bold">Transaksi</h1>
+      <div>
+        <h1 class="text-2xl font-bold">Transaksi</h1>
+        <p class="text-sm text-muted-foreground">
+          {{ sortedTransactions.length }} transaksi tercatat
+        </p>
+      </div>
 
       <Dialog v-model:open="isDialogOpen">
         <DialogTrigger as-child>
@@ -195,39 +224,70 @@ onMounted(() => {
     <div v-if="trxStore.loading" class="text-muted-foreground">Memuat data...</div>
     <div v-else-if="trxStore.error" class="text-destructive">{{ trxStore.error }}</div>
 
-    <Table v-else>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Tanggal</TableHead>
-          <TableHead>Tipe</TableHead>
-          <TableHead>Akun</TableHead>
-          <TableHead>Kategori</TableHead>
-          <TableHead>Deskripsi</TableHead>
-          <TableHead class="text-right">Jumlah</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="trx in trxStore.transactions" :key="trx.id">
-          <TableCell>{{ trx.tanggal }}</TableCell>
-          <TableCell>{{ tipeLabels[trx.tipe] }}</TableCell>
-          <TableCell>
-            {{ accountName(trx.account_id) }}
-            <span v-if="trx.tipe === 'transfer'"> → {{ accountName(trx.account_id_tujuan!) }}</span>
-          </TableCell>
-          <TableCell>{{ categoryName(trx.category_id) }}</TableCell>
-          <TableCell class="text-muted-foreground">{{ trx.deskripsi || '-' }}</TableCell>
-          <TableCell class="text-right font-medium">{{ formatRupiah(trx.jumlah) }}</TableCell>
-          <TableCell>
-            <Button variant="ghost" size="sm" @click="handleDelete(trx.id)">Hapus</Button>
-          </TableCell>
-        </TableRow>
-        <TableRow v-if="trxStore.transactions.length === 0">
-          <TableCell colspan="7" class="text-center text-muted-foreground">
-            Belum ada transaksi
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <Card v-else class="py-0 overflow-hidden gap-0">
+      <Table>
+        <TableHeader>
+          <TableRow class="bg-muted/50 hover:bg-muted/50">
+            <TableHead class="pl-6">Tanggal</TableHead>
+            <TableHead>Tipe</TableHead>
+            <TableHead>Akun</TableHead>
+            <TableHead>Kategori</TableHead>
+            <TableHead>Deskripsi</TableHead>
+            <TableHead class="text-right">Jumlah</TableHead>
+            <TableHead class="pr-6 w-10"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="trx in sortedTransactions"
+            :key="trx.id"
+            class="group hover:bg-muted/40"
+          >
+            <TableCell class="pl-6 text-muted-foreground whitespace-nowrap">
+              {{ formatTanggal(trx.tanggal) }}
+            </TableCell>
+            <TableCell>
+              <Badge :class="tipeBadgeClass[trx.tipe]" class="font-medium">
+                {{ tipeLabels[trx.tipe] }}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {{ accountName(trx.account_id) }}
+              <span v-if="trx.tipe === 'transfer'" class="text-muted-foreground">
+                → {{ accountName(trx.account_id_tujuan!) }}
+              </span>
+            </TableCell>
+            <TableCell class="text-muted-foreground">{{ categoryName(trx.category_id) }}</TableCell>
+            <TableCell class="text-muted-foreground max-w-[200px] truncate">
+              {{ trx.deskripsi || '-' }}
+            </TableCell>
+            <TableCell
+              class="text-right font-semibold whitespace-nowrap"
+              :class="{
+                'text-green-600': trx.tipe === 'income',
+                'text-red-600': trx.tipe === 'expense',
+              }"
+            >
+              {{ amountPrefix(trx.tipe) }}{{ formatRupiah(trx.jumlah) }}
+            </TableCell>
+            <TableCell class="pr-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="opacity-0 group-hover:opacity-100 transition-opacity"
+                @click="handleDelete(trx.id)"
+              >
+                <Trash2 class="size-4 text-muted-foreground" />
+              </Button>
+            </TableCell>
+          </TableRow>
+          <TableRow v-if="sortedTransactions.length === 0">
+            <TableCell colspan="7" class="text-center text-muted-foreground py-10">
+              Belum ada transaksi
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </Card>
   </div>
 </template>

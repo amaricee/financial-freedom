@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import AppSidebar from '@/components/AppSidebar.vue'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
+import { Toaster } from '@/components/ui/sonner'
 </script>
 
 <template>
-  <div class="min-h-screen bg-background">
-    <nav class="border-b px-6 py-3 flex gap-4">
-      <RouterLink to="/" class="font-medium hover:underline">Dashboard</RouterLink>
-      <RouterLink to="/accounts" class="font-medium hover:underline">Akun</RouterLink>
-      <RouterLink to="/transactions" class="font-medium hover:underline">Transaksi</RouterLink>
-    </nav>
-    <router-view />
-  </div>
+  
+  <SidebarProvider>
+    <AppSidebar />
+    <main class="flex-1 min-w-0">
+      <header class="flex items-center gap-2 border-b px-4 py-3">
+        <SidebarTrigger />
+        <Separator orientation="vertical" class="h-4" />
+        <AppBreadcrumb />
+      </header>
+      <router-view />
+    </main>
+    <Toaster/>
+  </SidebarProvider>
 </template>

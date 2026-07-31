@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatRupiah } from '@/lib/format'
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,6 @@ const accountTypeLabels: Record<AccountType, string> = {
   cash: 'Cash',
   e_wallet: 'E-Wallet',
   investasi: 'Investasi',
-}
-
-function formatRupiah(value: string) {
-  const num = Number(value)
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(num)
 }
 
 async function handleSubmit() {
