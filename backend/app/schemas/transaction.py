@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from app.models.transaction import TransactionType
 
 
-class TransactionBase(BaseModel):
+class TransactionFields(BaseModel):
+    """Field dasar, dipakai bareng oleh Create dan Out, TANPA validasi bisnis."""
+
     account_id: int
     category_id: Optional[int] = None
     tipe: TransactionType
@@ -15,6 +17,10 @@ class TransactionBase(BaseModel):
     tanggal: date
     deskripsi: Optional[str] = None
     account_id_tujuan: Optional[int] = None
+
+
+class TransactionCreate(TransactionFields):
+    """Dipakai khusus untuk request body POST/PUT — validasi bisnis di sini."""
 
     @model_validator(mode="after")
     def validate_by_tipe(self):
@@ -29,10 +35,6 @@ class TransactionBase(BaseModel):
         return self
 
 
-class TransactionCreate(TransactionBase):
-    pass
-
-
 class TransactionUpdate(BaseModel):
     account_id: Optional[int] = None
     category_id: Optional[int] = None
@@ -43,7 +45,10 @@ class TransactionUpdate(BaseModel):
     account_id_tujuan: Optional[int] = None
 
 
-class TransactionOut(TransactionBase):
+class TransactionOut(TransactionFields):
+    """Dipakai untuk response — TIDAK ada validasi bisnis, karena transaksi hasil
+    pembayaran hutang/piutang boleh punya category_id null walau tipe-nya expense/income."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int

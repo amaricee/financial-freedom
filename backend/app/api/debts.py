@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -23,7 +24,12 @@ def list_debts(
         q = q.filter(Debt.tipe == tipe)
     if status:
         q = q.filter(Debt.status == status)
-    return q.order_by(Debt.jatuh_tempo.asc().nullslast()).all()
+    # MariaDB/MySQL gak support NULLS LAST, jadi manual pakai CASE:
+    # data tanpa jatuh_tempo (NULL) diurutkan paling belakang
+    return q.order_by(
+        case((Debt.jatuh_tempo.is_(None), 1), else_=0),
+        Debt.jatuh_tempo.asc(),
+    ).all()
 
 
 @router.get("/{debt_id}", response_model=DebtOut)
