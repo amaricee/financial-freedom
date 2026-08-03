@@ -12,54 +12,40 @@ import {
   LinearScale,
 } from 'chart.js'
 import type { Transaction } from '@/types'
+import { getDaysInRange } from '@/lib/periode'
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale)
 
 const props = defineProps<{
   transactions: Transaction[]
+  periodeStart: Date
+  periodeEnd: Date
 }>()
 
-function toDateKey(d: Date) {
-  return d.toISOString().slice(0, 10)
-}
-
-// 30 hari terakhir (termasuk hari ini)
-const last30Days = computed(() => {
-  const today = new Date()
-  const days: { key: string; label: string }[] = []
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    days.push({
-      key: toDateKey(d),
-      label: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-    })
-  }
-  return days
-})
+const daysInPeriode = computed(() => getDaysInRange(props.periodeStart, props.periodeEnd))
 
 const chartData = computed(() => {
-  const incomeData = last30Days.value.map(({ key }) =>
+  const incomeData = daysInPeriode.value.map(({ key }) =>
     props.transactions
       .filter((t) => t.tipe === 'income' && t.tanggal === key)
       .reduce((sum, t) => sum + Number(t.jumlah), 0),
   )
 
-  const expenseData = last30Days.value.map(({ key }) =>
+  const expenseData = daysInPeriode.value.map(({ key }) =>
     props.transactions
       .filter((t) => t.tipe === 'expense' && t.tanggal === key)
       .reduce((sum, t) => sum + Number(t.jumlah), 0),
   )
 
   return {
-    labels: last30Days.value.map((d) => d.label),
+    labels: daysInPeriode.value.map((d) => d.label),
     datasets: [
       {
         label: 'Pemasukan',
         data: incomeData,
         borderColor: '#16a34a',
         backgroundColor: '#16a34a',
-        tension: 0, // garis tajam, gak dihaluskan
+        tension: 0,
         fill: false,
         borderWidth: 1.5,
         pointRadius: 0,
@@ -95,7 +81,7 @@ const chartOptions = {
   scales: {
     x: {
       ticks: {
-        maxTicksLimit: 8, // biar label tanggal gak numpuk
+        maxTicksLimit: 8,
       },
       grid: {
         display: false,

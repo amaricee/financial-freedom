@@ -4,9 +4,11 @@ import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { Toaster } from '@/components/ui/sonner'
+import 'vue-sonner/style.css'
 </script>
 
 <template>
+  
   
   <SidebarProvider>
     <AppSidebar />
@@ -18,6 +20,6 @@ import { Toaster } from '@/components/ui/sonner'
       </header>
       <router-view />
     </main>
-    <Toaster/>
+    <Toaster position="bottom-right" rich-colors />
   </SidebarProvider>
 </template>

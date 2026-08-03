@@ -2,47 +2,51 @@
 import { computed, onMounted } from 'vue'
 import { useAccountsStore } from '@/stores/accounts'
 import { useTransactionsStore } from '@/stores/transactions'
-import { formatRupiah, formatTanggal } from '@/lib/format'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCategoriesStore } from '@/stores/categories'
+import { formatRupiah, formatTanggal } from '@/lib/format'
+import { getPeriodeGajian } from '@/lib/periode'
+import { getSpendingLabel } from '@/lib/spending-alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import IncomeExpenseChart from '@/components/IncomeExpenseChart.vue'
 import ExpenseByCategoryChart from '@/components/ExpenseByCategoryChart.vue'
-import { getSpendingLabel } from '@/lib/spending-alert'
 
 const accountsStore = useAccountsStore()
 const trxStore = useTransactionsStore()
 const categoriesStore = useCategoriesStore()
 
+// Periode "bulan ini" versi siklus gajian: tanggal 25 s/d tanggal 24 bulan berikutnya
+const { start: periodeStart, end: periodeEnd } = getPeriodeGajian(new Date())
+
+function formatPeriodeLabel(d: Date) {
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
+
 const totalSaldo = computed(() =>
   accountsStore.accounts.reduce((sum, acc) => sum + Number(acc.saldo_current), 0),
 )
 
-const now = new Date()
-const bulanIni = now.getMonth() + 1
-const tahunIni = now.getFullYear()
-
-const transaksiBulanIni = computed(() =>
+const transaksiPeriodeIni = computed(() =>
   trxStore.transactions.filter((t) => {
     const d = new Date(t.tanggal)
-    return d.getMonth() + 1 === bulanIni && d.getFullYear() === tahunIni
+    return d >= periodeStart && d <= periodeEnd
   }),
 )
 
-const totalIncomeBulanIni = computed(() =>
-  transaksiBulanIni.value
+const totalIncomePeriodeIni = computed(() =>
+  transaksiPeriodeIni.value
     .filter((t) => t.tipe === 'income')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
-const totalExpenseBulanIni = computed(() =>
-  transaksiBulanIni.value
+const totalExpensePeriodeIni = computed(() =>
+  transaksiPeriodeIni.value
     .filter((t) => t.tipe === 'expense')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
 const transaksiTerbaru = computed(() =>
   [...trxStore.transactions]
-    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime() || b.id - a.id)
     .slice(0, 5),
 )
 
@@ -70,22 +74,28 @@ onMounted(() => {
       <Card>
         <CardHeader>
           <CardTitle class="text-sm font-medium text-muted-foreground">
-            Pemasukan Bulan Ini
+            Pemasukan Periode Ini
+            <span class="block text-xs font-normal mt-0.5">
+              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold text-green-600">{{ formatRupiah(totalIncomeBulanIni) }}</p>
+          <p class="text-2xl font-bold text-green-600">{{ formatRupiah(totalIncomePeriodeIni) }}</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle class="text-sm font-medium text-muted-foreground">
-            Pengeluaran Bulan Ini
+            Pengeluaran Periode Ini
+            <span class="block text-xs font-normal mt-0.5">
+              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold text-red-600">{{ formatRupiah(totalExpenseBulanIni) }}</p>
+          <p class="text-2xl font-bold text-red-600">{{ formatRupiah(totalExpensePeriodeIni) }}</p>
         </CardContent>
       </Card>
     </div>
@@ -93,21 +103,37 @@ onMounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Pemasukan vs Pengeluaran (30 Hari Terakhir)</CardTitle>
+          <CardTitle>
+            Pemasukan vs Pengeluaran
+            <span class="block text-xs font-normal text-muted-foreground mt-0.5">
+              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <IncomeExpenseChart :transactions="trxStore.transactions" />
+          <IncomeExpenseChart
+            :transactions="trxStore.transactions"
+            :periode-start="periodeStart"
+            :periode-end="periodeEnd"
+          />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Pengeluaran per Kategori (Bulan Ini)</CardTitle>
+          <CardTitle>
+            Pengeluaran per Kategori
+            <span class="block text-xs font-normal text-muted-foreground mt-0.5">
+              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ExpenseByCategoryChart
             :transactions="trxStore.transactions"
             :categories="categoriesStore.categories"
+            :periode-start="periodeStart"
+            :periode-end="periodeEnd"
           />
         </CardContent>
       </Card>

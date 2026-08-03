@@ -9,6 +9,8 @@ ChartJS.register(Title, Tooltip, Legend, ArcElement)
 const props = defineProps<{
   transactions: Transaction[]
   categories: Category[]
+  periodeStart: Date
+  periodeEnd: Date
 }>()
 
 const palette = [
@@ -24,18 +26,14 @@ const palette = [
   '#78716c',
 ]
 
-const now = new Date()
-const bulanIni = now.getMonth() + 1
-const tahunIni = now.getFullYear()
-
 const breakdown = computed(() => {
-  const expenseThisMonth = props.transactions.filter((t) => {
+  const expenseInPeriode = props.transactions.filter((t) => {
     const d = new Date(t.tanggal)
-    return t.tipe === 'expense' && d.getMonth() + 1 === bulanIni && d.getFullYear() === tahunIni
+    return t.tipe === 'expense' && d >= props.periodeStart && d <= props.periodeEnd
   })
 
   const map = new Map<string, number>()
-  for (const trx of expenseThisMonth) {
+  for (const trx of expenseInPeriode) {
     const catName = props.categories.find((c) => c.id === trx.category_id)?.nama ?? 'Lainnya'
     map.set(catName, (map.get(catName) ?? 0) + Number(trx.jumlah))
   }
@@ -75,7 +73,7 @@ const chartOptions = {
   <div class="h-72">
     <Doughnut v-if="breakdown.length > 0" :data="chartData" :options="chartOptions" />
     <div v-else class="h-full flex items-center justify-center text-sm text-muted-foreground">
-      Belum ada pengeluaran bulan ini
+      Belum ada pengeluaran di periode ini
     </div>
   </div>
 </template>
