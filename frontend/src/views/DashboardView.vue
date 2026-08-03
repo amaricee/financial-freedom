@@ -14,37 +14,37 @@ const accountsStore = useAccountsStore()
 const trxStore = useTransactionsStore()
 const categoriesStore = useCategoriesStore()
 
-// Periode "bulan ini" versi siklus gajian: tanggal 25 s/d tanggal 24 bulan berikutnya
-const { start: periodeStart, end: periodeEnd } = getPeriodeGajian(new Date())
+// "This month" based on payday cycle: the 25th through the 24th of the next month
+const { start: periodStart, end: periodEnd } = getPeriodeGajian(new Date())
 
-function formatPeriodeLabel(d: Date) {
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+function formatPeriodLabel(d: Date) {
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
 }
 
-const totalSaldo = computed(() =>
+const totalBalance = computed(() =>
   accountsStore.accounts.reduce((sum, acc) => sum + Number(acc.saldo_current), 0),
 )
 
-const transaksiPeriodeIni = computed(() =>
+const transactionsThisPeriod = computed(() =>
   trxStore.transactions.filter((t) => {
     const d = new Date(t.tanggal)
-    return d >= periodeStart && d <= periodeEnd
+    return d >= periodStart && d <= periodEnd
   }),
 )
 
-const totalIncomePeriodeIni = computed(() =>
-  transaksiPeriodeIni.value
+const totalIncomeThisPeriod = computed(() =>
+  transactionsThisPeriod.value
     .filter((t) => t.tipe === 'income')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
-const totalExpensePeriodeIni = computed(() =>
-  transaksiPeriodeIni.value
+const totalExpenseThisPeriod = computed(() =>
+  transactionsThisPeriod.value
     .filter((t) => t.tipe === 'expense')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
-const transaksiTerbaru = computed(() =>
+const recentTransactions = computed(() =>
   [...trxStore.transactions]
     .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime() || b.id - a.id)
     .slice(0, 5),
@@ -64,38 +64,38 @@ onMounted(() => {
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <Card>
         <CardHeader>
-          <CardTitle class="text-sm font-medium text-muted-foreground">Total Saldo</CardTitle>
+          <CardTitle class="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold">{{ formatRupiah(totalSaldo) }}</p>
+          <p class="text-2xl font-bold">{{ formatRupiah(totalBalance) }}</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle class="text-sm font-medium text-muted-foreground">
-            Pemasukan Periode Ini
+            Income This Period
             <span class="block text-xs font-normal mt-0.5">
-              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+              {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold text-green-600">{{ formatRupiah(totalIncomePeriodeIni) }}</p>
+          <p class="text-2xl font-bold text-green-600">{{ formatRupiah(totalIncomeThisPeriod) }}</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle class="text-sm font-medium text-muted-foreground">
-            Pengeluaran Periode Ini
+            Expenses This Period
             <span class="block text-xs font-normal mt-0.5">
-              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+              {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold text-red-600">{{ formatRupiah(totalExpensePeriodeIni) }}</p>
+          <p class="text-2xl font-bold text-red-600">{{ formatRupiah(totalExpenseThisPeriod) }}</p>
         </CardContent>
       </Card>
     </div>
@@ -104,17 +104,17 @@ onMounted(() => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Pemasukan vs Pengeluaran
+            Income vs Expenses
             <span class="block text-xs font-normal text-muted-foreground mt-0.5">
-              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+              Period {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <IncomeExpenseChart
             :transactions="trxStore.transactions"
-            :periode-start="periodeStart"
-            :periode-end="periodeEnd"
+            :periode-start="periodStart"
+            :periode-end="periodEnd"
           />
         </CardContent>
       </Card>
@@ -122,9 +122,9 @@ onMounted(() => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Pengeluaran per Kategori
+            Expenses by Category
             <span class="block text-xs font-normal text-muted-foreground mt-0.5">
-              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+              Period {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
@@ -132,8 +132,8 @@ onMounted(() => {
           <ExpenseByCategoryChart
             :transactions="trxStore.transactions"
             :categories="categoriesStore.categories"
-            :periode-start="periodeStart"
-            :periode-end="periodeEnd"
+            :periode-start="periodStart"
+            :periode-end="periodEnd"
           />
         </CardContent>
       </Card>
@@ -141,21 +141,21 @@ onMounted(() => {
 
     <Card>
       <CardHeader>
-        <CardTitle>Transaksi Terbaru</CardTitle>
+        <CardTitle>Recent Transactions</CardTitle>
       </CardHeader>
       <CardContent>
-        <div v-if="transaksiTerbaru.length === 0" class="text-muted-foreground text-sm">
-          Belum ada transaksi
+        <div v-if="recentTransactions.length === 0" class="text-muted-foreground text-sm">
+          No transactions yet
         </div>
         <div v-else class="space-y-3">
           <div
-            v-for="trx in transaksiTerbaru"
+            v-for="trx in recentTransactions"
             :key="trx.id"
             class="flex items-center justify-between border-b pb-2 last:border-0"
           >
             <div>
               <p class="font-medium flex items-center gap-1.5">
-                {{ trx.deskripsi || '(Tanpa deskripsi)' }}
+                {{ trx.deskripsi || '(No description)' }}
                 <span
                   v-if="getSpendingLabel(trx, trxStore.transactions)"
                   :class="['text-xs font-normal', getSpendingLabel(trx, trxStore.transactions)!.colorClass]"

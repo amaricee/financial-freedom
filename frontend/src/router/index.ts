@@ -27,6 +27,12 @@ const router = createRouter({
       component: () => import('../views/CategoriesView.vue'),
       meta: { title: 'Kategori' },
     },
+    {
+      path: '/debts',
+      name: 'debts',
+      component: () => import('../views/DebtsView.vue'),
+      meta: { title: 'Hutang/Piutang' },
+    },
   ],
 })
 
