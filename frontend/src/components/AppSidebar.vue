@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
-import { LayoutDashboard, Wallet, ArrowLeftRight, PiggyBank, HandCoins, Tags } from 'lucide-vue-next'
+import { LayoutDashboard, Wallet, ArrowLeftRight, PiggyBank, HandCoins, Tags, Target } from 'lucide-vue-next'
 import {
   Sidebar,
   SidebarContent,
@@ -20,7 +20,8 @@ const menuItems = [
   { title: 'Akun', url: '/accounts', icon: Wallet },
   { title: 'Transaksi', url: '/transactions', icon: ArrowLeftRight },
   { title: 'Kategori', url: '/categories', icon: Tags },
-  { title: 'Budget', url: '/budgets', icon: PiggyBank },
+  { title: 'Budget', url: '/budgets', icon: Target },
+  { title: 'Savings Goals', url: '/savings-goals', icon: PiggyBank },
   { title: 'Hutang/Piutang', url: '/debts', icon: HandCoins },
 ]
 </script>

@@ -28,10 +28,24 @@ export const useTransactionsStore = defineStore('transactions', () => {
     return data
   }
 
+  async function updateTransaction(id: number, payload: Partial<TransactionCreatePayload>) {
+    const { data } = await api.put(`/transactions/${id}`, payload)
+    await fetchTransactions()
+    return data
+  }
+
   async function deleteTransaction(id: number) {
     await api.delete(`/transactions/${id}`)
     await fetchTransactions()
   }
 
-  return { transactions, loading, error, fetchTransactions, createTransaction, deleteTransaction }
+  return {
+    transactions,
+    loading,
+    error,
+    fetchTransactions,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+  }
 })

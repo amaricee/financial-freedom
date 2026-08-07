@@ -28,10 +28,16 @@ export const useAccountsStore = defineStore('accounts', () => {
     return data
   }
 
+  async function updateAccount(id: number, payload: Partial<AccountCreatePayload>) {
+    const { data } = await api.put(`/accounts/${id}`, payload)
+    await fetchAccounts()
+    return data
+  }
+
   async function deleteAccount(id: number) {
     await api.delete(`/accounts/${id}`)
     await fetchAccounts()
   }
 
-  return { accounts, loading, error, fetchAccounts, createAccount, deleteAccount }
+  return { accounts, loading, error, fetchAccounts, createAccount, updateAccount, deleteAccount }
 })

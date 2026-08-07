@@ -3,15 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { useTransactionsStore } from '@/stores/transactions'
 import { useAccountsStore } from '@/stores/accounts'
 import { useCategoriesStore } from '@/stores/categories'
-import type { TransactionType } from '@/types'
+import type { Transaction, TransactionType } from '@/types'
 import { formatRupiah, formatTanggal } from '@/lib/format'
+import { checkAndNotifySpending } from '@/lib/spending-alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { checkAndNotifySpending } from '@/lib/spending-alert'
 import {
   Dialog,
   DialogContent,
@@ -28,13 +28,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2, Pencil } from 'lucide-vue-next'
 
 const trxStore = useTransactionsStore()
 const accountsStore = useAccountsStore()
 const categoriesStore = useCategoriesStore()
 
 const isDialogOpen = ref(false)
+const editingId = ref<number | null>(null) // null = create, ada isinya = edit
 
 const emptyForm = {
   account_id: '' as unknown as number,
@@ -84,6 +85,26 @@ const sortedTransactions = computed(() =>
   ),
 )
 
+function openCreateDialog() {
+  editingId.value = null
+  form.value = { ...emptyForm }
+  isDialogOpen.value = true
+}
+
+function openEditDialog(trx: Transaction) {
+  editingId.value = trx.id
+  form.value = {
+    account_id: trx.account_id,
+    category_id: trx.category_id,
+    tipe: trx.tipe,
+    jumlah: trx.jumlah,
+    tanggal: trx.tanggal,
+    deskripsi: trx.deskripsi ?? '',
+    account_id_tujuan: trx.account_id_tujuan,
+  }
+  isDialogOpen.value = true
+}
+
 async function handleSubmit() {
   const payload = {
     account_id: Number(form.value.account_id),
@@ -96,18 +117,22 @@ async function handleSubmit() {
       form.value.tipe === 'transfer' ? Number(form.value.account_id_tujuan) : null,
   }
 
-  // Cek boros/hemat SEBELUM createTransaction, biar histori yang dibandingin
-  // gak ke-pengaruh sama transaksi yang baru aja mau ditambah
-  const catName = categoryName(payload.category_id)
-  checkAndNotifySpending({
-    newTransaction: payload,
-    categoryName: catName,
-    allTransactions: trxStore.transactions,
-  })
+  if (editingId.value) {
+    // Mode edit: gak perlu cek spending alert, itu cuma relevan buat transaksi baru
+    await trxStore.updateTransaction(editingId.value, payload)
+  } else {
+    const catName = categoryName(payload.category_id)
+    checkAndNotifySpending({
+      newTransaction: payload,
+      categoryName: catName,
+      allTransactions: trxStore.transactions,
+    })
+    await trxStore.createTransaction(payload)
+  }
 
-  await trxStore.createTransaction(payload)
   isDialogOpen.value = false
   form.value = { ...emptyForm }
+  editingId.value = null
 }
 
 async function handleDelete(id: number) {
@@ -135,11 +160,11 @@ onMounted(() => {
 
       <Dialog v-model:open="isDialogOpen">
         <DialogTrigger as-child>
-          <Button>+ Tambah Transaksi</Button>
+          <Button @click="openCreateDialog">+ Tambah Transaksi</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tambah Transaksi</DialogTitle>
+            <DialogTitle>{{ editingId ? 'Edit Transaksi' : 'Tambah Transaksi' }}</DialogTitle>
           </DialogHeader>
           <form class="space-y-4" @submit.prevent="handleSubmit">
             <div class="space-y-2">
@@ -234,7 +259,7 @@ onMounted(() => {
             <TableHead>Kategori</TableHead>
             <TableHead>Deskripsi</TableHead>
             <TableHead class="text-right">Jumlah</TableHead>
-            <TableHead class="pr-6 w-10"></TableHead>
+            <TableHead class="pr-6 w-20"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -271,14 +296,14 @@ onMounted(() => {
               {{ amountPrefix(trx.tipe) }}{{ formatRupiah(trx.jumlah) }}
             </TableCell>
             <TableCell class="pr-6">
-              <Button
-                variant="ghost"
-                size="icon"
-                class="opacity-0 group-hover:opacity-100 transition-opacity"
-                @click="handleDelete(trx.id)"
-              >
-                <Trash2 class="size-4 text-muted-foreground" />
-              </Button>
+              <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" @click="openEditDialog(trx)">
+                  <Pencil class="size-4 text-muted-foreground" />
+                </Button>
+                <Button variant="ghost" size="icon" @click="handleDelete(trx.id)">
+                  <Trash2 class="size-4 text-muted-foreground" />
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
           <TableRow v-if="sortedTransactions.length === 0">

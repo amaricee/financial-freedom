@@ -39,6 +39,12 @@ const router = createRouter({
       component: () => import('../views/BudgetsView.vue'),
       meta: { title: 'Budget' },
     },
+    {
+      path: '/savings-goals',
+      name: 'savings-goals',
+      component: () => import('../views/SavingsGoalsView.vue'),
+      meta: { title: 'Savings Goals' },
+    },
   ],
 })
 

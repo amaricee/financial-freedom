@@ -14,37 +14,38 @@ const accountsStore = useAccountsStore()
 const trxStore = useTransactionsStore()
 const categoriesStore = useCategoriesStore()
 
-// "This month" based on payday cycle: the 25th through the 24th of the next month
-const { start: periodStart, end: periodEnd } = getPeriodeGajian(new Date())
+const { start: periodeStart, end: periodeEnd } = getPeriodeGajian(new Date())
 
-function formatPeriodLabel(d: Date) {
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+function formatPeriodeLabel(d: Date) {
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
 }
 
-const totalBalance = computed(() =>
+const totalSaldo = computed(() =>
   accountsStore.accounts.reduce((sum, acc) => sum + Number(acc.saldo_current), 0),
 )
 
-const transactionsThisPeriod = computed(() =>
+const transaksiPeriodeIni = computed(() =>
   trxStore.transactions.filter((t) => {
     const d = new Date(t.tanggal)
-    return d >= periodStart && d <= periodEnd
+    return d >= periodeStart && d <= periodeEnd
   }),
 )
 
-const totalIncomeThisPeriod = computed(() =>
-  transactionsThisPeriod.value
+const totalIncomePeriodeIni = computed(() =>
+  transaksiPeriodeIni.value
     .filter((t) => t.tipe === 'income')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
-const totalExpenseThisPeriod = computed(() =>
-  transactionsThisPeriod.value
+const totalExpensePeriodeIni = computed(() =>
+  transaksiPeriodeIni.value
     .filter((t) => t.tipe === 'expense')
     .reduce((sum, t) => sum + Number(t.jumlah), 0),
 )
 
-const recentTransactions = computed(() =>
+const netPeriodeIni = computed(() => totalIncomePeriodeIni.value - totalExpensePeriodeIni.value)
+
+const transaksiTerbaru = computed(() =>
   [...trxStore.transactions]
     .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime() || b.id - a.id)
     .slice(0, 5),
@@ -59,43 +60,61 @@ onMounted(() => {
 
 <template>
   <div class="p-6 space-y-6">
-    <h1 class="text-2xl font-bold">Dashboard</h1>
+    <div>
+      <h1 class="text-2xl font-heading font-semibold tracking-tight">Dashboard</h1>
+      <p class="text-sm text-muted-foreground">Ringkasan keuangan periode berjalan</p>
+    </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <!-- Hero: Total Saldo dengan tekstur ledger halus -->
+    <Card class="relative overflow-hidden border-none bg-primary text-primary-foreground py-8">
+      <div
+        class="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style="background-image: repeating-linear-gradient(0deg, currentColor 0px, currentColor 1px, transparent 1px, transparent 28px); background-position: 0 -10px"
+      />
+      <CardContent class="relative space-y-1">
+        <p class="text-sm font-medium opacity-70">Total Saldo</p>
+        <p class="font-mono text-4xl sm:text-5xl font-semibold tabular-nums tracking-tight">
+          {{ formatRupiah(totalSaldo) }}
+        </p>
+        <p class="text-sm opacity-70 pt-1">
+          <span :class="netPeriodeIni >= 0 ? 'text-emerald-300' : 'text-red-300'">
+            {{ netPeriodeIni >= 0 ? '+' : '' }}{{ formatRupiah(netPeriodeIni) }}
+          </span>
+          periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+        </p>
+      </CardContent>
+    </Card>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
-          <CardTitle class="text-sm font-medium text-muted-foreground">Total Balance</CardTitle>
+          <CardTitle class="text-sm font-medium text-muted-foreground">
+            Pemasukan Periode Ini
+            <span class="block text-xs font-normal mt-0.5">
+              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
+            </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold">{{ formatRupiah(totalBalance) }}</p>
+          <p class="font-mono text-2xl font-semibold tabular-nums text-green-600">
+            {{ formatRupiah(totalIncomePeriodeIni) }}
+          </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle class="text-sm font-medium text-muted-foreground">
-            Income This Period
+            Pengeluaran Periode Ini
             <span class="block text-xs font-normal mt-0.5">
-              {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
+              {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-2xl font-bold text-green-600">{{ formatRupiah(totalIncomeThisPeriod) }}</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle class="text-sm font-medium text-muted-foreground">
-            Expenses This Period
-            <span class="block text-xs font-normal mt-0.5">
-              {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p class="text-2xl font-bold text-red-600">{{ formatRupiah(totalExpenseThisPeriod) }}</p>
+          <p class="font-mono text-2xl font-semibold tabular-nums text-red-600">
+            {{ formatRupiah(totalExpensePeriodeIni) }}
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -103,28 +122,28 @@ onMounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>
-            Income vs Expenses
+          <CardTitle class="font-heading">
+            Pemasukan vs Pengeluaran
             <span class="block text-xs font-normal text-muted-foreground mt-0.5">
-              Period {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
+              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <IncomeExpenseChart
             :transactions="trxStore.transactions"
-            :periode-start="periodStart"
-            :periode-end="periodEnd"
+            :periode-start="periodeStart"
+            :periode-end="periodeEnd"
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Expenses by Category
+          <CardTitle class="font-heading">
+            Pengeluaran per Kategori
             <span class="block text-xs font-normal text-muted-foreground mt-0.5">
-              Period {{ formatPeriodLabel(periodStart) }} - {{ formatPeriodLabel(periodEnd) }}
+              Periode {{ formatPeriodeLabel(periodeStart) }} - {{ formatPeriodeLabel(periodeEnd) }}
             </span>
           </CardTitle>
         </CardHeader>
@@ -132,8 +151,8 @@ onMounted(() => {
           <ExpenseByCategoryChart
             :transactions="trxStore.transactions"
             :categories="categoriesStore.categories"
-            :periode-start="periodStart"
-            :periode-end="periodEnd"
+            :periode-start="periodeStart"
+            :periode-end="periodeEnd"
           />
         </CardContent>
       </Card>
@@ -141,21 +160,21 @@ onMounted(() => {
 
     <Card>
       <CardHeader>
-        <CardTitle>Recent Transactions</CardTitle>
+        <CardTitle class="font-heading">Transaksi Terbaru</CardTitle>
       </CardHeader>
       <CardContent>
-        <div v-if="recentTransactions.length === 0" class="text-muted-foreground text-sm">
-          No transactions yet
+        <div v-if="transaksiTerbaru.length === 0" class="text-muted-foreground text-sm">
+          Belum ada transaksi
         </div>
         <div v-else class="space-y-3">
           <div
-            v-for="trx in recentTransactions"
+            v-for="trx in transaksiTerbaru"
             :key="trx.id"
             class="flex items-center justify-between border-b pb-2 last:border-0"
           >
             <div>
               <p class="font-medium flex items-center gap-1.5">
-                {{ trx.deskripsi || '(No description)' }}
+                {{ trx.deskripsi || '(Tanpa deskripsi)' }}
                 <span
                   v-if="getSpendingLabel(trx, trxStore.transactions)"
                   :class="['text-xs font-normal', getSpendingLabel(trx, trxStore.transactions)!.colorClass]"
@@ -167,7 +186,7 @@ onMounted(() => {
               <p class="text-sm text-muted-foreground">{{ formatTanggal(trx.tanggal) }}</p>
             </div>
             <p
-              class="font-medium"
+              class="font-mono font-medium tabular-nums"
               :class="{
                 'text-green-600': trx.tipe === 'income',
                 'text-red-600': trx.tipe === 'expense',
